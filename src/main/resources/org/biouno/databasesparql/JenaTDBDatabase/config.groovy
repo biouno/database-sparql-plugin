@@ -7,7 +7,7 @@ f.entry(field:"location", title:_("Location")) {
 }
 f.advanced {
     f.entry(field:"mustExist", title:_("Must Exist")) {
-    f.textbox()
+    f.checkbox(checked:"false", default:"false")
 }
 }
 f.block {

@@ -4,12 +4,15 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.jdbc.tdb.TDBDriver;
+import org.apache.jena.query.ARQ;
 import org.jenkinsci.plugins.database.AbstractRemoteDatabase;
 import org.jenkinsci.plugins.database.AbstractRemoteDatabaseDescriptor;
 import org.jenkinsci.plugins.database.Database;
@@ -30,11 +33,30 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
 
     private final String location;
 
+    private final static Logger LOGGER = Logger.getLogger(JenaTDBDatabase.class.getName());
+
+    static {
+        try {
+            ARQ.init();
+            TDBDriver.register();
+        } catch (SQLException e) {
+            LOGGER.log(Level.WARNING, String.format("Failed to register Jena TDB driver: %s", e.getMessage()), e);
+        }
+    }
+
     @DataBoundConstructor
     public JenaTDBDatabase(String location, Boolean mustExist) {
         super("", "", "", Secret.fromString(""), "");
         this.location = StringUtils.defaultIfBlank(location, "");
         this.mustExist = BooleanUtils.toBooleanDefaultIfNull(mustExist, Boolean.FALSE);
+    }
+
+    public Boolean getMustExist() {
+        return mustExist;
+    }
+
+    public String getLocation() {
+        return location;
     }
 
     @Override
@@ -59,10 +81,11 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
                 InstantiationException {
 
             try {
-                Database db = clazz.getConstructor(String.class, String.class).newInstance(location, mustExist);
+                Database db = JenaTDBDatabase.class.getConstructor(String.class, Boolean.class).newInstance(location,
+                        mustExist);
                 DataSource ds = db.getDataSource();
                 Connection con = ds.getConnection();
-                con.createStatement().execute("SELECT ?a ?b ?c WHERE { ?a ?b ?c }");
+                con.createStatement().execute("SELECT * WHERE { ?a ?b ?c }");
                 con.close();
                 return FormValidation.ok("OK");
             } catch (SQLException e) {

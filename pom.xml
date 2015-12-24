@@ -39,12 +39,17 @@
 	</pluginRepositories>
 
 	<dependencies>
-        <dependency>
-        	<groupId>org.apache.jena</groupId>
-        	<artifactId>jena-jdbc-driver-tdb</artifactId>
-        	<version>3.0.1</version>
-        </dependency>
-        <dependency>
+		<dependency>
+			<groupId>org.apache.jena</groupId>
+			<artifactId>jena-jdbc-driver-tdb</artifactId>
+			<version>3.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.jena</groupId>
+			<artifactId>jena-tdb</artifactId>
+			<version>3.0.1</version>
+		</dependency>
+		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>database</artifactId>
 			<version>1.1</version>
@@ -57,5 +62,18 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 
 </project>

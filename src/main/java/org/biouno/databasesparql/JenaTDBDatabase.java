@@ -1,23 +1,22 @@
 package org.biouno.databasesparql;
 
-import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.sql.Connection;
 import java.sql.Driver;
-import java.sql.DriverPropertyInfo;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.sql.SQLException;
+
+import javax.sql.DataSource;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.jdbc.tdb.TDBDriver;
 import org.jenkinsci.plugins.database.AbstractRemoteDatabase;
 import org.jenkinsci.plugins.database.AbstractRemoteDatabaseDescriptor;
+import org.jenkinsci.plugins.database.Database;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
 import hudson.Extension;
-import hudson.Util;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 
@@ -55,23 +54,21 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
             return "SPARQL TDB";
         }
 
-        public FormValidation doCheckProperties(@QueryParameter String properties) throws IOException {
-            try {
-                Set<String> validPropertyNames = new HashSet<String>();
-                Properties props = Util.loadProperties(properties);
-                for (DriverPropertyInfo p : new Driver().getPropertyInfo("jdbc:postgresql://localhost/dummy", props)) {
-                    validPropertyNames.add(p.name);
-                }
+        public FormValidation doValidate(@QueryParameter String location, @QueryParameter Boolean mustExist)
+                throws NoSuchMethodException, InvocationTargetException, IllegalAccessException,
+                InstantiationException {
 
-                for (Map.Entry e : props.entrySet()) {
-                    String key = e.getKey().toString();
-                    if (!validPropertyNames.contains(key))
-                        return FormValidation.error("Unrecognized property: " + key);
-                }
-                return FormValidation.ok();
-            } catch (Throwable e) {
-                return FormValidation.warning(e, "Failed to validate the connection properties");
+            try {
+                Database db = clazz.getConstructor(String.class, String.class).newInstance(location, mustExist);
+                DataSource ds = db.getDataSource();
+                Connection con = ds.getConnection();
+                con.createStatement().execute("SELECT ?a ?b ?c WHERE { ?a ?b ?c }");
+                con.close();
+                return FormValidation.ok("OK");
+            } catch (SQLException e) {
+                return FormValidation.error(e, "Failed to connect to " + getDisplayName());
             }
+
         }
     }
 

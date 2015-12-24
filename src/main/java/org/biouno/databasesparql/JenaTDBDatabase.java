@@ -35,7 +35,7 @@ import javax.sql.DataSource;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.jdbc.tdb.TDBDriver;
-import org.apache.jena.query.ARQ;
+import org.apache.jena.system.JenaSystem;
 import org.jenkinsci.plugins.database.AbstractRemoteDatabase;
 import org.jenkinsci.plugins.database.AbstractRemoteDatabaseDescriptor;
 import org.jenkinsci.plugins.database.Database;
@@ -70,19 +70,23 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
      * Register JDBC driver and init ARQ.
      */
     static {
+        ClassLoader contextClassLoader = null;
         try {
-            ARQ.init();
+            contextClassLoader = Thread.currentThread().getContextClassLoader();
+            Thread.currentThread().setContextClassLoader(JenaTDBDatabase.class.getClassLoader());
+            JenaSystem.DEBUG_INIT = true;
             TDBDriver.register();
         } catch (SQLException e) {
             LOGGER.log(Level.WARNING, String.format("Failed to register Jena TDB driver: %s", e.getMessage()), e);
+        } finally {
+            Thread.currentThread().setContextClassLoader(contextClassLoader);
         }
     }
 
     /**
-     * Create a Jena TDB Database. This constructor is exposed to the UI via the
-     * {@link DataBoundConstructor} annotation. It overrides the default constructor
-     * from the {@link AbstractRemoteDatabase}, as Jena TDB uses only location and
-     * other flags, different than other JDBC drivers.
+     * Create a Jena TDB Database. This constructor is exposed to the UI via the {@link DataBoundConstructor}
+     * annotation. It overrides the default constructor from the {@link AbstractRemoteDatabase}, as Jena TDB uses
+     * only location and other flags, different than other JDBC drivers.
      *
      * @param location TDB database location
      * @param mustExist must-exist flag

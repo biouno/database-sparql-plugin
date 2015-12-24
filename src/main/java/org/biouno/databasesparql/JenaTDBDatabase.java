@@ -74,7 +74,7 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
         try {
             contextClassLoader = Thread.currentThread().getContextClassLoader();
             Thread.currentThread().setContextClassLoader(JenaTDBDatabase.class.getClassLoader());
-            JenaSystem.DEBUG_INIT = true;
+            JenaSystem.DEBUG_INIT = Boolean.FALSE;
             TDBDriver.register();
         } catch (SQLException e) {
             LOGGER.log(Level.WARNING, String.format("Failed to register Jena TDB driver: %s", e.getMessage()), e);

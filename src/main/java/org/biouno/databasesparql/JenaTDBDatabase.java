@@ -1,3 +1,26 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015 Bruno P. Kinoshita
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package org.biouno.databasesparql;
 
 import java.lang.reflect.InvocationTargetException;
@@ -23,18 +46,29 @@ import hudson.Extension;
 import hudson.util.FormValidation;
 import hudson.util.Secret;
 
+/**
+ * Adds SPARQL through Jena TDB to the Database plugin.
+ *
+ * @author Bruno P. Kinoshita
+ * @since 1.0
+ */
 public class JenaTDBDatabase extends AbstractRemoteDatabase {
+
+    private final static Logger LOGGER = Logger.getLogger(JenaTDBDatabase.class.getName());
 
     /**
      * Define whether the TDB database must exist beforehand or not. Defaults to
      * {@code false}.
      */
     private final Boolean mustExist;
-
+    /**
+     * The TDB database location. Will be created if mustExist is {@code false}.
+     */
     private final String location;
 
-    private final static Logger LOGGER = Logger.getLogger(JenaTDBDatabase.class.getName());
-
+    /*
+     * Register JDBC driver and init ARQ.
+     */
     static {
         try {
             ARQ.init();
@@ -44,6 +78,15 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
         }
     }
 
+    /**
+     * Create a Jena TDB Database. This constructor is exposed to the UI via the
+     * {@link DataBoundConstructor} annotation. It overrides the default constructor
+     * from the {@link AbstractRemoteDatabase}, as Jena TDB uses only location and
+     * other flags, different than other JDBC drivers.
+     *
+     * @param location TDB database location
+     * @param mustExist must-exist flag
+     */
     @DataBoundConstructor
     public JenaTDBDatabase(String location, Boolean mustExist) {
         super("", "", "", Secret.fromString(""), "");
@@ -51,22 +94,48 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
         this.mustExist = BooleanUtils.toBooleanDefaultIfNull(mustExist, Boolean.FALSE);
     }
 
+    /**
+     * Get must exist flag.
+     *
+     * @return {@code true} if the TDB location must exist before being used,
+     *         {@code false} otherwise.
+     */
     public Boolean getMustExist() {
         return mustExist;
     }
 
+    /**
+     * Get the TDB location, used in the JDBC connection URL.
+     *
+     * @return TDB location string
+     */
     public String getLocation() {
         return location;
     }
 
+    /*
+     * (non-Javadoc)
+     *
+     * @see
+     * org.jenkinsci.plugins.database.AbstractRemoteDatabase#getDriverClass()
+     */
     @Override
     protected Class<? extends Driver> getDriverClass() {
         return TDBDriver.class;
     }
 
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.jenkinsci.plugins.database.AbstractRemoteDatabase#getJdbcUrl()
+     */
     @Override
     protected String getJdbcUrl() {
-        return String.format("jdbc:jena:tdb:location=%s&must-exist=%s", location, mustExist.toString());
+        final String jdbcUrl = String.format("jdbc:jena:tdb:location=%s&must-exist=%s", location, mustExist.toString());
+        if (LOGGER.isLoggable(Level.FINE)) {
+            LOGGER.fine(String.format("JDBC URL: %s", jdbcUrl));
+        }
+        return jdbcUrl;
     }
 
     @Extension
@@ -79,7 +148,9 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
         public FormValidation doValidate(@QueryParameter String location, @QueryParameter Boolean mustExist)
                 throws NoSuchMethodException, InvocationTargetException, IllegalAccessException,
                 InstantiationException {
-
+            if (LOGGER.isLoggable(Level.FINE)) {
+                LOGGER.entering(JenaTDBDatabase.class.getName(), "doValidate");
+            }
             try {
                 Database db = JenaTDBDatabase.class.getConstructor(String.class, Boolean.class).newInstance(location,
                         mustExist);
@@ -89,6 +160,7 @@ public class JenaTDBDatabase extends AbstractRemoteDatabase {
                 con.close();
                 return FormValidation.ok("OK");
             } catch (SQLException e) {
+                LOGGER.log(Level.WARNING, "Failed to validate Jena TDB connection: " + e.getMessage(), e);
                 return FormValidation.error(e, "Failed to connect to " + getDisplayName());
             }
 
